@@ -2,6 +2,7 @@
 #define _MODULEPARSER_HAPTB_H_
 
 #include <EventHits_HAPTB.h>
+#include <ModuleParser.h>
 #include <HAPTBHit.h>
 #include <JANA/JException.h>
 

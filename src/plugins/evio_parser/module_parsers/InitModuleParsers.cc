@@ -12,6 +12,7 @@
 #include "ModuleParser_HelicityDecoder.h"
 #include "ModuleParser_MPD.h"
 #include "ModuleParser_VFTDC.h"
+#include "ModuleParser_HAPTB.h"
 
 void InitModuleParsers(JApplication* app) {
     // Get the module parsers service

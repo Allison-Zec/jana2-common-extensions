@@ -11,10 +11,10 @@
  * @param physics_events Reference to physics events vector (will be updated)
  * @param trigger_data Trigger data for the EVIO block
  */
-void ModuleParser_TIScaler::parse(std::shared_ptr<evio::BaseStructure> data_block,
-                                  uint32_t rocid,
-                                  std::vector<PhysicsEvent*>& physics_events,
-                                  TriggerData& trigger_data) {
+void ModuleParser_HAPTB::parse(std::shared_ptr<evio::BaseStructure> data_block,
+                               uint32_t rocid,
+                               std::vector<PhysicsEvent*>& physics_events,
+                               TriggerData& trigger_data) {
   std::vector<uint32_t> data_words = data_block->getUIntData();
   std::map<uint64_t, std::shared_ptr<EventHits_HAPTB>> event_hits_map;
   
