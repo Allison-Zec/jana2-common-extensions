@@ -26,6 +26,7 @@ void InitModuleParsers(JApplication* app) {
     module_parsers_svc->addParser(0xdec, new ModuleParser_HelicityDecoder());
     module_parsers_svc->addParser(3561,  new ModuleParser_MPD());
     module_parsers_svc->addParser(9,     new ModuleParser_VFTDC());
+    module_parsers_svc->addParser(30,    new ModuleParser_HAPTB());
 }
 
 #endif

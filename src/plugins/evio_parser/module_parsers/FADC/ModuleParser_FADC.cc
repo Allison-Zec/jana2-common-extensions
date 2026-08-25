@@ -42,6 +42,9 @@ void ModuleParser_FADC::parse(std::shared_ptr<evio::BaseStructure> data_block,
 
     
     // Process each data word sequentially
+    // printf("Size of data words vector: %zu\n", data_words.size());
+    // printf("Trigger first data event number: %" PRIu64 "\n", trigger_data.first_event_number);
+    // printf("Trigger last data event number %" PRIu64 "\n", trigger_data.last_event_number);
     for (size_t j = 0; j < data_words.size(); j++) {
         auto d = data_words[j];
         uint32_t word_type = getBitsInRange(d, 31, 31);
@@ -173,6 +176,11 @@ void ModuleParser_FADC::parse(std::shared_ptr<evio::BaseStructure> data_block,
                 uint32_t Vpeak = getBitsInRange(d, 11, 0);
                 LOG_DEBUG(GetLogger()) << "ModuleParser_FADC::DEBUG - data type 10 CHAN = " << chan << "; Pulse number = " << pulse_number << "; Vmin = "<< Vmin << "; Vpeak = "<< Vpeak << LOG_END;
                 event_hits_map[event_number]->pulse_peaks.push_back(new FADC250HallBPulsePeakHit(trigger_num, timestamp1, timestamp2, rocid, block_slot, module_id, chan, pulse_number, Vmin, Vpeak));
+            }
+            
+            if(trigger_data.first_event_number == 1314ULL){
+              printf("Event number: %" PRIu64 "\n", event_number);
+              printf("Full Data Word (blah): %" PRIx32 "\n", d);
             }
         }
     }

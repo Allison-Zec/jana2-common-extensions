@@ -4,6 +4,7 @@
 #include "ModuleParser.h"
 #include "FADC250WaveformHit.h"
 #include "FADC250PulseHit.h"
+#include <cinttypes>
 
 /**
  * @class ModuleParser_FADC

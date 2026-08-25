@@ -65,6 +65,13 @@ void ModuleParser_FADCScaler::parse(std::shared_ptr<evio::BaseStructure> data_bl
 
     // --- mirrors the processor's "Event " print, but at the source ---
     LOG_DEBUG(GetLogger()) << "ModuleParser_FADCScaler::DEBUG - Event Number = " << event->GetEventNumber() << "; Last Event Number = " << trigger_data.last_event_number << "; ROCID = " << rocid <<  LOG_END;
+    
+    printf(PRIu32 "\n", event_number);
+    if(event_number < 2000){
+      printf("Event number: " PRIu32 "\n", event_number);
+      printf("Size of data block: %zu\n", data_words.size());
+      printf("Number of hits in this event %zu\n", event_hits->scalers.size());
+    }
 
     event->addHits(event_hits);
     physics_events.push_back(event);
