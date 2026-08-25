@@ -178,10 +178,10 @@ void ModuleParser_FADC::parse(std::shared_ptr<evio::BaseStructure> data_block,
                 event_hits_map[event_number]->pulse_peaks.push_back(new FADC250HallBPulsePeakHit(trigger_num, timestamp1, timestamp2, rocid, block_slot, module_id, chan, pulse_number, Vmin, Vpeak));
             }
             
-            if(trigger_data.first_event_number == 1314ULL){
-              printf("Event number: %" PRIu64 "\n", event_number);
-              printf("Full Data Word (blah): %" PRIx32 "\n", d);
-            }
+            // if(trigger_data.first_event_number == 1314ULL){
+            //   printf("Event number: %" PRIu64 "\n", event_number);
+            //   printf("Full Data Word (blah): %" PRIx32 "\n", d);
+            // }
         }
     }
 

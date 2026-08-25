@@ -15,6 +15,7 @@ void ModuleParser_HAPTB::parse(std::shared_ptr<evio::BaseStructure> data_block,
                                uint32_t rocid,
                                std::vector<PhysicsEvent*>& physics_events,
                                TriggerData& trigger_data) {
+  printf("Got HAPPEX TB data!\n");
   std::vector<uint32_t> data_words = data_block->getUIntData();
   std::map<uint64_t, std::shared_ptr<EventHits_HAPTB>> event_hits_map;
   
