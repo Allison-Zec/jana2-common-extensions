@@ -21,6 +21,7 @@
 #include "FADC250HallBPulseIntegralHit.h"
 #include "FADC250HallBPulseTimeHit.h"
 #include "FADC250HallBPulsePeakHit.h"
+#include "HAPTBHit.h"
 
 /**
  * @struct WaveformTreeRow
@@ -36,6 +37,7 @@ struct WaveformTreeRow {
     uint32_t chan;
     uint32_t rocid;
     std::vector<uint32_t> waveform;
+    uint32_t dac16;
 };
 
 struct HelDec_t {
@@ -87,6 +89,7 @@ private:
     Input<FADC250HallBPulseIntegralHit> m_hallb_pulse_integral_hits_in {this};
     Input<FADC250HallBPulseTimeHit>    m_hallb_pulse_time_hits_in {this};
     Input<FADC250HallBPulsePeakHit>    m_hallb_pulse_peak_hits_in {this};
+    Input<HAPTBHit>                    m_haptb_hits_in {this};
 
     /**
      * @brief ROOT output filename parameter
@@ -109,6 +112,9 @@ private:
      * hits are written.
      */
     Parameter<std::string> m_txt_output_filename {this, "TXT_OUT_FILENAME", "evio_processor_hits.txt", "Output text file name for event hit summaries", true};
+    
+    // DAC16 tracking variable
+    uint32_t current_dac16 = 0;
 
     // ROOT Tree variables 
     //Waveform Tree Variables
@@ -116,6 +122,7 @@ private:
     std::vector<uint32_t> ev_chan;
     std::vector<uint32_t> ev_waveform;
     std::vector<uint32_t> ev_rocid;
+    uint32_t ev_dac16;
 
     //Pulse Tree Variables
     uint32_t integral_sum;
@@ -132,6 +139,7 @@ private:
     std::vector<uint32_t> ev_pulse_slot;
     std::vector<uint32_t> ev_pulse_chan;
     std::vector<uint32_t> ev_pulse_rocid;
+    uint32_t ev_pulse_dac16;
 
     //CAEN Tree Variables
     std::vector<uint32_t> ev_caen_rocid;

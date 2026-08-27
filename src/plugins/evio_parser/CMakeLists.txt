@@ -40,6 +40,7 @@ target_link_libraries(evio_parser
 add_library(evio_parser_data_types INTERFACE)
 
 foreach(_dir IN LISTS CORE_INCLUDE_DIR MODULE_PARSERS_INCLUDE_DIRS)
+    message(STATUS "DIR in list: ${_dir}")
     target_include_directories(evio_parser_data_types INTERFACE
         $<BUILD_INTERFACE:${_dir}>
     )

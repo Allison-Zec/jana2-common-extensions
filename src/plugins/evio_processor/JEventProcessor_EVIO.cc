@@ -23,6 +23,7 @@ JEventProcessor_EVIO::JEventProcessor_EVIO() {
     m_hallb_pulse_integral_hits_in.SetOptional(true);
     m_hallb_pulse_time_hits_in.SetOptional(true);
     m_hallb_pulse_peak_hits_in.SetOptional(true);
+    m_haptb_hits_in.SetOptional(true);
 }
 
 /**
@@ -49,6 +50,7 @@ void JEventProcessor_EVIO::Init() {
     m_waveform_tree->Branch("chan", &ev_chan);
     m_waveform_tree->Branch("waveform", &ev_waveform);
     m_waveform_tree->Branch("rocid", &ev_rocid);
+    m_waveform_tree->Branch("dac16", &ev_dac16);
 
     // Create ROOT tree for pulse data
     m_pulse_tree = new TTree("pulse_tree","FADC250 pulse data(slow, channel, integral, time)");
@@ -62,6 +64,7 @@ void JEventProcessor_EVIO::Init() {
     m_pulse_tree->Branch("chan",&ev_pulse_chan);
     m_pulse_tree->Branch("slot",&ev_pulse_slot);
     m_pulse_tree->Branch("rocid", &ev_pulse_rocid);
+    m_pulse_tree->Branch("dac16", &ev_pulse_dac16);
 
     // Create ROOT tree for CAEN1190 data
     m_caen1190_tree = new TTree("caen1190_tree","CAEN1190 data (slot, channel, time)");
@@ -168,6 +171,10 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
 
     }
     m_caen1190_tree->Fill();
+    
+    for(const auto& haptb_hit : m_haptb_hits_in()){
+      current_dac16 = haptb_hit->dac16;
+    }
 
     // FADC250 waveform hits
     for (const auto& waveform_hit : m_waveform_hits_in()) {
@@ -177,13 +184,14 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
         m_waveform_tree_row.rocid = waveform_hit->rocid;
         m_waveform_tree_row.waveform = waveform_hit->waveform;
 
-	size_t waveform_sample_number = m_waveform_tree_row.waveform.size();
+	      size_t waveform_sample_number = m_waveform_tree_row.waveform.size();
 
-	ev_slot.insert(ev_slot.end(), waveform_sample_number, m_waveform_tree_row.slot);
-	ev_chan.insert(ev_chan.end(), waveform_sample_number, m_waveform_tree_row.chan);
+	      ev_slot.insert(ev_slot.end(), waveform_sample_number, m_waveform_tree_row.slot);
+	      ev_chan.insert(ev_chan.end(), waveform_sample_number, m_waveform_tree_row.chan);
         ev_rocid.insert(ev_rocid.end(), waveform_sample_number, m_waveform_tree_row.rocid);
-	ev_waveform.insert(ev_waveform.end(),  m_waveform_tree_row.waveform.begin(), m_waveform_tree_row.waveform.end());
+	      ev_waveform.insert(ev_waveform.end(),  m_waveform_tree_row.waveform.begin(), m_waveform_tree_row.waveform.end());
     }
+    ev_dac16 = current_dac16;
 
     // FADC250 pulse hits
  
@@ -195,6 +203,7 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
         fine_time = pulse_hit->fine_time;
         pulse_peak = pulse_hit->pulse_peak;
         pedestal_quality = pulse_hit->pedestal_quality;
+        ev_pulse_dac16 = current_dac16;
         if(integral_sum!=0){
             nn++;
             ev_integral_sum.push_back(integral_sum);
@@ -225,7 +234,7 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
     heldec = {};
     // Helicity decoder data
     for(const auto& heldec_hit : m_heldec_data_in()){
-	heldec.helicity_seed          = heldec_hit->helicity_seed;
+	      heldec.helicity_seed          = heldec_hit->helicity_seed;
         heldec.n_tstable_fall         = heldec_hit->n_tstable_fall;
         heldec.n_tstable_rise         = heldec_hit->n_tstable_rise;
         heldec.n_pattsync             = heldec_hit->n_pattsync;
@@ -262,6 +271,7 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
         const auto& hallb_pulse_integral_hits = m_hallb_pulse_integral_hits_in();
         const auto& hallb_pulse_time_hits    = m_hallb_pulse_time_hits_in();
         const auto& hallb_pulse_peak_hits    = m_hallb_pulse_peak_hits_in();
+        const auto& haptb_hits               = m_haptb_hits_in();
 
         bool have_caen1190_hits          = !caen1190_hits.empty();
         bool have_waveforms              = !waveform_hits.empty();
@@ -273,9 +283,10 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
         bool have_hallb_pulse_integrals  = !hallb_pulse_integral_hits.empty();
         bool have_hallb_pulse_times      = !hallb_pulse_time_hits.empty();
         bool have_hallb_pulse_peaks      = !hallb_pulse_peak_hits.empty();
+        bool have_haptb_hits             = !haptb_hits.empty();
         // Only write anything if we have at least one type of hit
         if (have_caen1190_hits ||  have_waveforms || have_pulses || have_fadc_scalers || have_ti_scalers || have_mpd_hits || have_vftdc_hits
-            || have_hallb_pulse_integrals || have_hallb_pulse_times || have_hallb_pulse_peaks) {
+            || have_hallb_pulse_integrals || have_hallb_pulse_times || have_hallb_pulse_peaks || have_haptb_hits) {
             auto event_number = event.GetEventNumber();
 
             m_txt_output_file << "Event " << event_number << "\n";
@@ -461,6 +472,19 @@ void JEventProcessor_EVIO::ProcessSequential(const JEvent &event) {
                 }
             } else {
                 m_txt_output_file << "  No HallB pulse peak hits in this event\n";
+            }
+            
+            // HAPPEX timing board summary
+            if (have_haptb_hits) {
+              m_txt_output_file << "  HAPPEX timing board hits: " << haptb_hits.size() << "\n";
+              for (const auto& hit : haptb_hits) {
+                m_txt_output_file << "    HAPTB rocid=" << hit->rocid
+                    << " Event number=" << hit->event_num
+                    << " DAC16=" << hit->dac16
+                    << "\n";
+              }
+            } else {
+              m_txt_output_file << "  No HAPPEX timing board hits in this event\n";
             }
 
             m_txt_output_file << "\n";

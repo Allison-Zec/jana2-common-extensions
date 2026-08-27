@@ -1,9 +1,10 @@
-#ifndef _MODULEPARSER_HAPTB_H_
-#define _MODULEPARSER_HAPTB_H_
+#ifndef MODULEPARSER_HAPTB_H
+#define MODULEPARSER_HAPTB_H
 
-#include <EventHits_HAPTB.h>
-#include <ModuleParser.h>
-#include <HAPTBHit.h>
+#include "ModuleParser.h"
+#include "HAPTBHit.h"
+#include "EventHits_HAPTB.h"
+
 #include <JANA/JException.h>
 
 /**
