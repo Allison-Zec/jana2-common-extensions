@@ -6,6 +6,8 @@
 #include "TGraphErrors.h"
 #include <numeric>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 
 std::pair<Float_t, Float_t> CalculateStats(std::vector<Float_t> pulses){
@@ -30,6 +32,9 @@ std::pair<Float_t, Float_t> CalculateStats(std::vector<Float_t> pulses){
 void PlotPulser(Int_t run_num){
   TString infile_path = ".";
   TString infile_name = Form("Run%i_pulserwise.root", run_num);
+  TString outfile_name = Form("Run%i_pulserwise.txt", run_num);
+  
+  std::ofstream outfile (outfile_name.Data());
   
   std::map<Int_t, std::vector<Float_t>> bin_map_p3_p1;
   std::map<Int_t, std::vector<Float_t>> bin_map_p1;
@@ -86,10 +91,14 @@ void PlotPulser(Int_t run_num){
     std::pair<Float_t, Float_t> p3_p1_stats = CalculateStats(bin_map_p3_p1[dac_values[i]]);
     std::pair<Float_t, Float_t> p1_stats = CalculateStats(bin_map_p1[dac_values[i]]);
     
+    outfile << "Entry #" << i + 1 << ": DAC16 = " << dac_values[i] << "; Integral = " << p1_stats.first << std::endl;
+    
     gPulser->SetPoint(nPoints, p1_stats.first, p3_p1_stats.first);
     gPulser->SetPointError(nPoints, 0.0, p3_p1_stats.second);
     nPoints++;
   }
+  
+  outfile.close();
   
   TCanvas *c = new TCanvas("c1", "Pulser Canvas", 1200, 800);
   gPulser->Draw("ap");

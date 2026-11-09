@@ -24,4 +24,6 @@ evio_processor_hits.txt
 # misc directories
 data
 rootfiles
+Rootfiles
 *.x
+Run*.txt

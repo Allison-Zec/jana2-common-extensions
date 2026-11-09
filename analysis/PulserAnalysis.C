@@ -5,42 +5,54 @@ WaveformCalc calcWaveformIntegral(std::vector<uint32_t> *waveform){
   WaveformCalc waveform_results;
 
   Int_t samples = 300;
-  Int_t pedestalSamp = 40;
-  Float_t firstPedestal = 0.0;
-  Float_t lastPedestal = 0.0;
-  waveform_results.maxValue = 0.0;
-  waveform_results.minValue = 1E16;
-  for(Int_t i = 0; i < pedestalSamp; i++){
-    firstPedestal += waveform->at(i);
-    lastPedestal += waveform->at(samples - pedestalSamp + i);
+  Int_t pedestal_samp = 40;
+  Float_t first_pedestal = 0.0;
+  Float_t last_pedestal = 0.0;
+  waveform_results.max_value = 0.0;
+  waveform_results.min_value = 1E16;
+  for(Int_t i = 0; i < pedestal_samp; i++){
+    first_pedestal += waveform->at(i);
+    last_pedestal += waveform->at(samples - pedestal_samp + i);
     
-    if(waveform->at(i) > waveform_results.maxValue){
-      waveform_results.maxValue = waveform->at(i);
+    if(waveform->at(i) > waveform_results.max_value){
+      waveform_results.max_value = waveform->at(i);
       waveform_results.max_bin = i;
     }
-    if(waveform->at(i) < waveform_results.minValue){
-      waveform_results.minValue = waveform->at(i);
+    if(waveform->at(i) < waveform_results.min_value){
+      waveform_results.min_value = waveform->at(i);
       waveform_results.min_bin = i;
     }
   }
-  firstPedestal /= pedestalSamp;
-  lastPedestal /= pedestalSamp;
-  waveform_results.pedestal = (firstPedestal + lastPedestal) / 2.0;
+  first_pedestal /= pedestal_samp;
+  last_pedestal /= pedestal_samp;
+  waveform_results.pedestal = (first_pedestal + last_pedestal) / 2.0;
   
   waveform_results.integral = 0.0;
-  for(Int_t i = pedestalSamp; i < samples - pedestalSamp; i++){
+  for(Int_t i = pedestal_samp; i < samples - pedestal_samp; i++){
     waveform_results.integral += waveform->at(i) - waveform_results.pedestal;
-    if(waveform->at(i) > waveform_results.maxValue){
-      waveform_results.maxValue = waveform->at(i);
+    if(waveform->at(i) > waveform_results.max_value){
+      waveform_results.max_value = waveform->at(i);
       waveform_results.max_bin = i;
     }
-    if(waveform->at(i) < waveform_results.minValue){
-      waveform_results.minValue = waveform->at(i);
+    if(waveform->at(i) < waveform_results.min_value){
+      waveform_results.min_value = waveform->at(i);
       waveform_results.min_bin = i;
     }
   }
   
   return waveform_results;
+}
+
+WaveformCalc emptyWaveCalc(){
+  WaveformCalc empty;
+  empty.integral = 0.0;
+  empty.pedestal = 0.0;
+  empty.max_value = 0.0;
+  empty.min_value = 0.0;
+  empty.max_bin = -1;
+  empty.min_bin = -1;
+  
+  return empty;
 }
 
 
@@ -74,15 +86,16 @@ void InitPulserTree(TTree *pulser){
 }
 
 
-std::vector<PulserResult> ParseAllWaveforms(Int_t runNum, TString infileName, Int_t maxEntry = -1){
-  TFile *infile = TFile::Open(infileName.Data(), "READ");
+std::vector<PulserResult> ParseAllWaveforms(Int_t runNum, TString infile_name, Int_t mode=0, Int_t max_entry=-1){
+  TFile *infile = TFile::Open(infile_name.Data(), "READ");
   
   std::vector<uint32_t> *slot = nullptr;
   std::vector<uint32_t> *chan = nullptr;
   std::vector<uint32_t> *waveform_vec = nullptr;
   std::vector<PulserResult> result_list;
-  Int_t cycleStep = -1;
+  Int_t cycle_step = -1;
   uint32_t dac16_in;
+  std::vector<std::vector<Int_t>> all_cuts = ReadMaps(run_num);
   
   TTree *waveform = (TTree *)infile->Get("waveform_tree");
   TTree *pulse = (TTree *)infile->Get("pulse_tree");
@@ -92,22 +105,39 @@ std::vector<PulserResult> ParseAllWaveforms(Int_t runNum, TString infileName, In
   waveform->SetBranchAddress("dac16", &dac16_in);
   
   
-  Int_t stopPoint = (Int_t)waveform->GetEntries();
-  if(maxEntry > 0){
-    stopPoint = maxEntry;
+  Int_t stop_point = (Int_t)waveform->GetEntries();
+  if(max_entry > 0){
+    stop_point = max_entry;
   }
   
   Float_t pct = 0.05;
-  Float_t pctThresh = pct * stopPoint;
-  for(Int_t i = 0; i < stopPoint; i++){
+  Float_t pctThresh = pct * stop_point;
+  for(Int_t i = 0; i < stop_point; i++){
     PulserResult pulser_result;
     waveform->GetEntry(i);
-    
-    if(cycleStep == -1 && chan->at(0) == 0){
+    if(chan->size() == 0 || waveform_vec->size() == 0){
+      cycle_step = 0;
+      pulser_result.waveform_calc = emptyWaveCalc();
+      pulser_result.cycle_step = 0;
+      pulser_result.dac16 = dac16_in;
+      result_list.push_back(pulser_result);
       continue;
     }
-    if(chan->at(0) == 1){
-      cycleStep = 0;
+    if(mode == 0){
+      if(cycle_step == -1 && chan->at(0) == 0){
+        continue;
+      }
+      if(chan->at(0) == 1){
+        cycle_step = 0;
+      }
+    }
+    if(mode == 1){
+      if(cycle_step == -1 && chan->size() < 600){
+        continue;
+      }
+      if(chan->size() == 600){
+        cycle_step = 0;
+      }
     }
     if(i > pctThresh){
       printf("Event %i, %.1f percent complete\n", i, 100.0 * pct);
@@ -115,16 +145,16 @@ std::vector<PulserResult> ParseAllWaveforms(Int_t runNum, TString infileName, In
       pctThresh = pct * stopPoint;
     }
     
-    if(cycleStep > 3 || cycleStep < 0){
-      printf("CycleStep has detected a bad cycle! CycleStep==%i\n", cycleStep);
+    if(cycle_step > 3 || cycle_step < 0){
+      printf("Cycle_Step has detected a bad cycle! Cycle_Step==%i\n", cycle_step);
     }
     
     pulser_result.waveform_calc = calcWaveformIntegral(waveform_vec);
-    pulser_result.cycle_step = cycleStep;
+    pulser_result.cycle_step = cycle_step;
     pulser_result.dac16 = dac16_in;
     result_list.push_back(pulser_result);
     
-    cycleStep++;
+    cycle_step++;
   }
   
   infile->Close();
@@ -133,47 +163,57 @@ std::vector<PulserResult> ParseAllWaveforms(Int_t runNum, TString infileName, In
 }
 
 
-void WriteOutputTree(std::vector<PulserResult> allResults, TString outfileName){
-  TFile *outfile = TFile::Open(outfileName.Data(), "RECREATE");
+void WriteOutputTree(std::vector<PulserResult> all_results, TString outfile_name, Int_t mode=0){
+  TFile *outfile = TFile::Open(outfile_name.Data(), "RECREATE");
   TTree *pulser = new TTree("pulser", "pulser results tree");
   InitPulserTree(pulser);
   
-  for(Int_t i = 0; i < allResults.size(); i++){
-    PulserResult result = allResults[i];
-    if(result.cycle_step == 0){
+  for(Int_t i = 0; i < all_results.size(); i++){
+    PulserResult result = all_results[i];
+    if((result.cycle_step == 0 && mode == 0) || (result.cycle_step == 2 && mode == 1)){
       p4       = result.waveform_calc.integral;
       p4ped    = result.waveform_calc.pedestal;
-      p4max    = result.waveform_calc.maxValue;
-      p4min    = result.waveform_calc.minValue;
+      p4max    = result.waveform_calc.max_value;
+      p4min    = result.waveform_calc.min_value;
       p4maxBin = result.waveform_calc.max_bin;
       p4minBin = result.waveform_calc.min_bin;
     }
-    else if(result.cycle_step == 1){
+    else if((result.cycle_step == 1 && mode == 0) || (result.cycle_step == 3 && mode == 1)){
       p1       = result.waveform_calc.integral;
       p1ped    = result.waveform_calc.pedestal;
-      p1max    = result.waveform_calc.maxValue;
-      p1min    = result.waveform_calc.minValue;
+      p1max    = result.waveform_calc.max_value;
+      p1min    = result.waveform_calc.min_value;
       p1maxBin = result.waveform_calc.max_bin;
       p1minBin = result.waveform_calc.min_bin;
+      if(result.cycle_step == 3 && mode == 1){
+        dac16 = result.dac16;
+        pulser->Fill();
+        cycle_num++;
+      }
     }
-    else if(result.cycle_step == 2){
+    else if((result.cycle_step == 2 && mode == 0) || (result.cycle_step == 0 && mode == 1)){
       p2       = result.waveform_calc.integral;
       p2ped    = result.waveform_calc.pedestal;
-      p2max    = result.waveform_calc.maxValue;
-      p2min    = result.waveform_calc.minValue;
+      p2max    = result.waveform_calc.max_value;
+      p2min    = result.waveform_calc.min_value;
       p2maxBin = result.waveform_calc.max_bin;
       p2minBin = result.waveform_calc.min_bin;
     }
-    else{
+    else if((result.cycle_step == 3 && mode == 0) || (result.cycle_step == 1 && mode == 1)){
       p3       = result.waveform_calc.integral;
       p3ped    = result.waveform_calc.pedestal;
-      p3max    = result.waveform_calc.maxValue;
-      p3min    = result.waveform_calc.minValue;
+      p3max    = result.waveform_calc.max_value;
+      p3min    = result.waveform_calc.min_value;
       p3maxBin = result.waveform_calc.max_bin;
       p3minBin = result.waveform_calc.min_bin;
-      dac16    = result.dac16;
-      pulser->Fill();
-      cycleNum++;
+      if(result.cycle_step == 3 && mode == 0){
+        dac16 = result.dac16;
+        pulser->Fill();
+        cycle_num++;
+      }
+    }
+    else{
+      printf("Bad pulser cycle at event %i!\n", i);
     }
   }
   
@@ -229,13 +269,13 @@ void PlotMultipleTrees(TString infileName, Int_t maxEntry=-1){
 }
 
 
-void PulserAnalysis(Int_t runNum, Int_t maxEntry=-1){
-  // TString rootfilePath = "/adaqfs/home/acompton/software/HallA-compton-jana2/Rootfiles";
-  // TString infileName = Form("%s/Run%i.root", rootfilePath.Data(), runNum);
-  TString infileName = "../evio_processor.root";
-  // TString outfileName = Form("%s/Run%i_pulserwise.root", rootfilePath.Data(), runNum);
-  TString outfileName = Form("Run%i_pulserwise.root", runNum);
-  std::vector<PulserResult> allResults = ParseAllWaveforms(runNum, infileName, maxEntry);
-  WriteOutputTree(allResults, outfileName);
+void PulserAnalysis(Int_t run_num, Int_t mode=0, Int_t max_entry=-1){
+  TString rootfilePath = "/adaqfs/home/acompton/software/HallA-compton-jana2/Rootfiles";
+  TString infile_name = Form("%s/Run%i.root", rootfilePath.Data(), run_num);
+  // TString infileName = "../evio_processor.root";
+  TString outfile_name = Form("%s/Run%i_pulserwise.root", rootfilePath.Data(), run_num);
+  // TString outfileName = Form("Run%i_pulserwise.root", runNum);
+  std::vector<PulserResult> all_results = ParseAllWaveforms(run_num, infile_name, mode, max_entry);
+  WriteOutputTree(all_results, outfile_name, mode);
   // PlotMultipleTrees(infileName, maxEntry);
 }
